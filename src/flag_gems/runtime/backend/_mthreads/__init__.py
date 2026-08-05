@@ -20,6 +20,7 @@ vendor_info = VendorDescriptor(
     device_query_cmd="mthreads-gmi",
     fp64_enabled=False,
     tle_enabled=True,
+    fp32_matmul_modes=("highest", "medium"),
 )
 
 CUSTOMIZED_UNUSED_OPS = ()

@@ -55,6 +55,7 @@ vendor_info = VendorDescriptor(
     # PPU has custom Triton backend with AIU extensions
     # The compiler supports Triton 2.3.x - 3.4.x
     triton_extra_name=None,  # Uses standard CUDA path with PPU-specific compiler
+    fp32_matmul_modes=("highest", "high", "medium"),
 )
 
 # Operators that should use PyTorch native implementation

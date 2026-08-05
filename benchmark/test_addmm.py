@@ -29,11 +29,50 @@ def _input_fn(b, m, n, k, dtype, device, b_column_major):
         yield bias, inp1, inp2,
 
 
+class AddmmVectorBiasBenchmark(base.BlasBenchmark):
+    def set_more_shapes(self):
+        return []
+
+    def get_tflops(self, op, *args, **kwargs):
+        _, mat1, mat2 = args
+        return mat1.shape[0] * mat2.shape[1] * (2 * mat1.shape[1] + 1)
+
+    def record_shapes(self, bias, mat1, mat2):
+        return {
+            "bias": bias.size(),
+            "mat1": mat1.size(),
+            "mat2": mat2.size(),
+            "mat2_layout": ("column-major" if mat2.stride(0) == 1 else "row-major"),
+        }
+
+
+def _input_fn_vector_bias(b, m, n, k, dtype, device, b_column_major):
+    mat1 = torch.randn((m, k), dtype=dtype, device=device)
+    if b_column_major:
+        mat2 = torch.randn((n, k), dtype=dtype, device=device).t()
+    else:
+        mat2 = torch.randn((k, n), dtype=dtype, device=device)
+    bias = torch.randn((n,), dtype=dtype, device=device)
+    yield bias, mat1, mat2
+
+
 @pytest.mark.addmm
 def test_addmm(monkeypatch):
     bench = base.BlasBenchmark(
         op_name="addmm",
         input_fn=_input_fn,
+        torch_op=torch.addmm,
+        dtypes=consts.FLOAT_DTYPES,
+    )
+
+    bench.run()
+
+
+@pytest.mark.addmm
+def test_addmm_vector_bias(monkeypatch):
+    bench = AddmmVectorBiasBenchmark(
+        op_name="addmm_vector_bias",
+        input_fn=_input_fn_vector_bias,
         torch_op=torch.addmm,
         dtypes=consts.FLOAT_DTYPES,
     )

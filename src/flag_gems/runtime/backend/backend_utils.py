@@ -18,6 +18,10 @@ from dataclasses import dataclass
 
 import yaml
 
+FP32_DOT_MODE_STRICT = 0
+FP32_DOT_MODE_HIGH = 1
+FP32_DOT_MODE_MEDIUM = 2
+
 
 # Metadata template,  Each vendor needs to specialize instances of this template
 @dataclass
@@ -36,6 +40,18 @@ class VendorDescriptor:
     bf16_enabled: bool = True
     int64_enabled: bool = True
     tle_enabled: bool = False
+    fp32_matmul_modes: tuple = ("highest",)
+
+
+def resolve_fp32_dot_mode(precision, supported_modes):
+    """Resolve a PyTorch matmul precision request for the active backend."""
+    if precision == "medium":
+        if "medium" in supported_modes:
+            return FP32_DOT_MODE_MEDIUM
+        precision = "high"
+    if precision == "high" and "high" in supported_modes:
+        return FP32_DOT_MODE_HIGH
+    return FP32_DOT_MODE_STRICT
 
 
 def get_tune_config(vendor_name=None, file_mode="r", file_path=None):

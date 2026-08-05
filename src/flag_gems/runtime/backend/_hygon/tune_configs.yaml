@@ -617,6 +617,38 @@ addmm:
     BLOCK_SIZE_K: 32
   num_stages: 5
   num_warps: 2
+- META:
+    BLOCK_SIZE_M: 32
+    BLOCK_SIZE_N: 32
+    BLOCK_SIZE_K: 128
+    USE_GROUPED_TILE_LOADS: true
+  num_stages: 1
+  num_warps: 4
+  num_ldmatrixes: 0
+- META:
+    BLOCK_SIZE_M: 128
+    BLOCK_SIZE_N: 64
+    BLOCK_SIZE_K: 32
+    USE_GROUPED_TILE_LOADS: true
+  num_stages: 1
+  num_warps: 8
+  num_ldmatrixes: 0
+- META:
+    BLOCK_SIZE_M: 64
+    BLOCK_SIZE_N: 64
+    BLOCK_SIZE_K: 32
+    USE_GROUPED_TILE_LOADS: true
+  num_stages: 1
+  num_warps: 4
+  num_ldmatrixes: 0
+- META:
+    BLOCK_SIZE_M: 128
+    BLOCK_SIZE_N: 128
+    BLOCK_SIZE_K: 64
+    USE_GROUPED_TILE_LOADS: true
+  num_stages: 1
+  num_warps: 4
+  num_ldmatrixes: 1
 cross_entropy_loss:
 - META:
     BLOCK_C: 256

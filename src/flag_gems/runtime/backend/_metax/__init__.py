@@ -15,7 +15,10 @@
 from backend_utils import VendorDescriptor
 
 vendor_info = VendorDescriptor(
-    vendor_name="metax", device_name="cuda", device_query_cmd="mx-smi"
+    vendor_name="metax",
+    device_name="cuda",
+    device_query_cmd="mx-smi",
+    fp32_matmul_modes=("highest", "medium"),
 )
 
 CUSTOMIZED_UNUSED_OPS = ()
