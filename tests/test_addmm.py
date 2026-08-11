@@ -43,7 +43,7 @@ else:
     FLOAT_DTYPES = utils.FLOAT_DTYPES
 
 
-_ADDMM_LAYOUT_BIAS_VENDORS = ("ascend", "nvidia", "hygon", "thead")
+_ADDMM_LAYOUT_BIAS_VENDORS = ("ascend", "nvidia", "hygon", "thead", "mthreads")
 
 # Extend this set as vendor implementations gain equivalent layout and bias support.
 _addmm_layout_bias_only = pytest.mark.skipif(
