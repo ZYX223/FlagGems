@@ -73,6 +73,9 @@ def test_addmm(monkeypatch, M, N, K, scalar, dtype, b_column_major):
 
 
 @pytest.mark.addmm
+@pytest.mark.skipif(
+    flag_gems.vendor_name != "ascend", reason="Ascend-specific AddMM coverage"
+)
 @pytest.mark.parametrize("dtype", FLOAT_DTYPES)
 @pytest.mark.parametrize("bias_shape", [(), (1, 128), (128, 1)])
 def test_addmm_broadcast_bias(dtype, bias_shape):
@@ -93,6 +96,9 @@ def test_addmm_broadcast_bias(dtype, bias_shape):
 
 
 @pytest.mark.addmm
+@pytest.mark.skipif(
+    flag_gems.vendor_name != "ascend", reason="Ascend-specific AddMM coverage"
+)
 @pytest.mark.parametrize("dtype", FLOAT_DTYPES)
 @pytest.mark.parametrize("b_column_major", [True, False])
 def test_addmm_padded_strides(dtype, b_column_major):
@@ -153,6 +159,9 @@ def test_addmm_out(M, N, K, scalar, dtype):
 
 
 @pytest.mark.addmm_out
+@pytest.mark.skipif(
+    flag_gems.vendor_name != "ascend", reason="Ascend-specific AddMM coverage"
+)
 @pytest.mark.parametrize("dtype", FLOAT_DTYPES)
 @pytest.mark.parametrize("b_column_major", [True, False])
 def test_addmm_out_noncontiguous(dtype, b_column_major):
