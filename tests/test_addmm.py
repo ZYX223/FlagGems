@@ -43,8 +43,15 @@ else:
     FLOAT_DTYPES = utils.FLOAT_DTYPES
 
 
-_ADDMM_LAYOUT_BIAS_VENDORS = ("ascend", "nvidia", "hygon", "thead", "mthreads")
-_COMMON_ADDMM_VENDORS = ("nvidia", "hygon", "thead")
+_ADDMM_LAYOUT_BIAS_VENDORS = (
+    "ascend",
+    "nvidia",
+    "hygon",
+    "thead",
+    "mthreads",
+    "metax",
+)
+_ADDMM_BETA_ZERO_VENDORS = ("nvidia", "hygon", "thead", "metax")
 
 # Extend this set as vendor implementations gain equivalent layout and bias support.
 _addmm_layout_bias_only = pytest.mark.skipif(
@@ -52,9 +59,9 @@ _addmm_layout_bias_only = pytest.mark.skipif(
     reason="Issue #5385: AddMM layout and bias coverage is pending on this backend",
 )
 
-_common_addmm_only = pytest.mark.skipif(
-    flag_gems.vendor_name not in _COMMON_ADDMM_VENDORS,
-    reason="This case validates the common AddMM implementation",
+_addmm_beta_zero_only = pytest.mark.skipif(
+    flag_gems.vendor_name not in _ADDMM_BETA_ZERO_VENDORS,
+    reason="This backend does not yet preserve the AddMM beta-zero contract",
 )
 
 
@@ -96,7 +103,7 @@ def test_addmm(monkeypatch, M, N, K, scalar, dtype, b_column_major):
 
 
 @pytest.mark.addmm
-@_common_addmm_only
+@_addmm_beta_zero_only
 @pytest.mark.parametrize("dtype", FLOAT_DTYPES)
 def test_addmm_beta_zero_ignores_bias(dtype):
     M, N, K = 17, 19, 23
@@ -227,7 +234,7 @@ def test_addmm_out(M, N, K, scalar, dtype):
 
 
 @pytest.mark.addmm_out
-@_common_addmm_only
+@_addmm_beta_zero_only
 @pytest.mark.parametrize("dtype", FLOAT_DTYPES)
 def test_addmm_out_beta_zero_ignores_bias(dtype):
     M, N, K = 17, 19, 23
@@ -354,7 +361,7 @@ def test_addmm_dtype_fp32_accum(M, N, K):
 
 
 @pytest.mark.addmm_dtype
-@_common_addmm_only
+@_addmm_beta_zero_only
 @pytest.mark.skipif(
     version.parse(torch.__version__) < version.parse("2.8"),
     reason="The operator addmm.dtype was added starting from 2.8.0",
@@ -413,7 +420,7 @@ def test_addmm_dtype_out_fp32_accum(M, N, K):
 
 
 @pytest.mark.addmm_dtype_out
-@_common_addmm_only
+@_addmm_beta_zero_only
 @pytest.mark.skipif(
     version.parse(torch.__version__) < version.parse("2.8"),
     reason="The operator addmm.dtype_out was added starting from 2.8.0",
