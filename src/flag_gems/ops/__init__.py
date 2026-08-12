@@ -31,6 +31,7 @@ from flag_gems.ops._batch_norm_no_update import _batch_norm_no_update
 from flag_gems.ops._chunk_cat import chunk_cat as _chunk_cat
 from flag_gems.ops._conj import _conj
 from flag_gems.ops._convert_weight_to_int4pack import _convert_weight_to_int4pack
+from flag_gems.ops._dyn_quant_pack_4bit_weight import _dyn_quant_pack_4bit_weight
 from flag_gems.ops._embedding_bag_dense_backward import _embedding_bag_dense_backward
 from flag_gems.ops._embedding_bag_per_sample_weights_backward import (
     _embedding_bag_per_sample_weights_backward,
@@ -48,6 +49,9 @@ from flag_gems.ops._fused_rms_norm import (
     _fused_rms_norm,
     _fused_rms_norm_backward,
     _fused_rms_norm_forward,
+)
+from flag_gems.ops._has_compatible_shallow_copy_type import (
+    _has_compatible_shallow_copy_type,
 )
 from flag_gems.ops._is_all_true import _is_all_true
 from flag_gems.ops._jagged_to_padded_dense_forward import (
@@ -90,12 +94,16 @@ from flag_gems.ops._upsample_nearest_exact2d_backward import (
     _upsample_nearest_exact2d_backward,
 )
 from flag_gems.ops._upsample_nearest_exact3d import _upsample_nearest_exact3d
+from flag_gems.ops._weight_int4pack_mm_with_scales_and_zeros import (
+    _weight_int4pack_mm_with_scales_and_zeros,
+)
 from flag_gems.ops._weight_norm import _weight_norm
 from flag_gems.ops.abs import abs, abs_
 from flag_gems.ops.absolute import absolute
 from flag_gems.ops.acos import acos
 from flag_gems.ops.acosh import acosh, acosh_
 from flag_gems.ops.adaptive_avg_pool2d import adaptive_avg_pool2d
+from flag_gems.ops.adaptive_max_pool2d_backward import adaptive_max_pool2d_backward
 from flag_gems.ops.adaptive_max_pool3d_backward import adaptive_max_pool3d_backward
 from flag_gems.ops.add import add, add_
 from flag_gems.ops.addbmm import addbmm
@@ -135,6 +143,7 @@ from flag_gems.ops.asinh_ import asinh_
 from flag_gems.ops.assert_async import _assert_async
 from flag_gems.ops.atan import atan, atan_
 from flag_gems.ops.atan2 import atan2, atan2_out
+from flag_gems.ops.atan2_ import atan2_
 from flag_gems.ops.atanh import atanh, atanh_
 from flag_gems.ops.attention import (
     ScaleDotProductAttention,
@@ -148,6 +157,7 @@ from flag_gems.ops.attention import (
 from flag_gems.ops.avg_pool2d import avg_pool2d, avg_pool2d_backward
 from flag_gems.ops.avg_pool3d import avg_pool3d, avg_pool3d_backward
 from flag_gems.ops.baddbmm import baddbmm, baddbmm_out
+from flag_gems.ops.baddbmm_ import baddbmm_
 from flag_gems.ops.batch_norm import batch_norm, batch_norm_backward
 from flag_gems.ops.bernoulli import bernoulli
 from flag_gems.ops.bernoulli_ import bernoulli_
@@ -308,6 +318,7 @@ from flag_gems.ops.fractional_max_pool2d import (
 )
 from flag_gems.ops.full import full
 from flag_gems.ops.full_like import full_like
+from flag_gems.ops.functional_assert_async import _functional_assert_async
 from flag_gems.ops.gather import gather, gather_backward
 from flag_gems.ops.gather_block_quantized import gather_block_quantized
 from flag_gems.ops.gcd import gcd, gcd_out
@@ -350,6 +361,7 @@ from flag_gems.ops.hypot_ import hypot_
 from flag_gems.ops.i0 import i0, i0_out
 from flag_gems.ops.i0_ import i0_
 from flag_gems.ops.igamma_ import igamma_
+from flag_gems.ops.igammac import igammac, igammac_out
 from flag_gems.ops.igammac_ import igammac_
 from flag_gems.ops.im2col import im2col
 from flag_gems.ops.index import index
@@ -458,10 +470,13 @@ from flag_gems.ops.mse_loss import mse_loss
 from flag_gems.ops.mse_loss_backward import mse_loss_backward
 from flag_gems.ops.mul import mul, mul_
 from flag_gems.ops.multinomial import multinomial
+from flag_gems.ops.multiply import multiply
 from flag_gems.ops.multiply_ import multiply_
 from flag_gems.ops.mv import mv
+from flag_gems.ops.mvlgamma import mvlgamma
 from flag_gems.ops.mvlgamma_ import mvlgamma_
 from flag_gems.ops.nan_to_num import nan_to_num
+from flag_gems.ops.nan_to_num_ import nan_to_num_
 from flag_gems.ops.nanmedian import (
     nanmedian,
     nanmedian_dim,
@@ -473,8 +488,10 @@ from flag_gems.ops.narrow import narrow
 from flag_gems.ops.narrow_copy import narrow_copy
 from flag_gems.ops.native_layer_norm import native_layer_norm
 from flag_gems.ops.ne import ne, ne_scalar
+from flag_gems.ops.ne_ import ne_, ne_scalar_
 from flag_gems.ops.neg import neg, neg_
 from flag_gems.ops.negative import negative
+from flag_gems.ops.negative_ import negative_
 from flag_gems.ops.new_full import new_full
 from flag_gems.ops.new_ones import new_ones
 from flag_gems.ops.nextafter import nextafter, nextafter_
@@ -496,6 +513,7 @@ from flag_gems.ops.normal import (
     normal_tensor_tensor,
 )
 from flag_gems.ops.not_equal import not_equal, not_equal_scalar
+from flag_gems.ops.not_equal_ import not_equal_, not_equal_scalar_
 from flag_gems.ops.one_hot import one_hot
 from flag_gems.ops.ones import ones
 from flag_gems.ops.ones_like import ones_like
@@ -551,6 +569,10 @@ from flag_gems.ops.repeat_interleave import (
 )
 from flag_gems.ops.replication_pad1d import replication_pad1d, replication_pad1d_out
 from flag_gems.ops.replication_pad2d import replication_pad2d, replication_pad2d_out
+from flag_gems.ops.replication_pad2d_backward import (
+    replication_pad2d_backward,
+    replication_pad2d_backward_grad_input,
+)
 from flag_gems.ops.replication_pad3d import replication_pad3d
 from flag_gems.ops.replication_pad3d_backward import replication_pad3d_backward
 from flag_gems.ops.resize import resize, resize_
@@ -630,6 +652,7 @@ from flag_gems.ops.special_chebyshev_polynomial_w import (
     special_chebyshev_polynomial_w_out,
 )
 from flag_gems.ops.special_digamma import special_digamma
+from flag_gems.ops.special_erf import special_erf
 
 # from flag_gems.ops.special_erfc import erfc, erfc_, special_erfc
 from flag_gems.ops.special_erfcx import special_erfcx
@@ -638,11 +661,13 @@ from flag_gems.ops.special_erfinv import (
     special_erfinv_,
     special_erfinv_out,
 )
+from flag_gems.ops.special_exp2 import special_exp2
 from flag_gems.ops.special_gammainc import special_gammainc
 from flag_gems.ops.special_gammaln import special_gammaln, special_gammaln_out
 from flag_gems.ops.special_hermite_polynomial_h import special_hermite_polynomial_h
 from flag_gems.ops.special_i0e import special_i0e, special_i0e_out
 from flag_gems.ops.special_i1 import special_i1, special_i1_out
+from flag_gems.ops.special_i1e import special_i1e
 from flag_gems.ops.special_legendre_polynomial_p import special_legendre_polynomial_p
 from flag_gems.ops.special_log1p import special_log1p, special_log1p_out
 from flag_gems.ops.special_log_softmax import special_log_softmax
@@ -682,6 +707,7 @@ from flag_gems.ops.sub import sub, sub_
 from flag_gems.ops.subtract_ import subtract, subtract_
 from flag_gems.ops.sum import sum, sum_dim, sum_dim_out, sum_out
 from flag_gems.ops.svd import svd
+from flag_gems.ops.sym_storage_offset import sym_storage_offset
 from flag_gems.ops.sym_stride import sym_stride
 from flag_gems.ops.t_copy import t_copy, t_copy_out
 from flag_gems.ops.take import take, take_out
@@ -744,6 +770,7 @@ from flag_gems.ops.xlogy import (
     xlogy_tensor_scalar,
     xlogy_tensor_scalar_out,
 )
+from flag_gems.ops.xlogy_ import xlogy_, xlogy_tensor_scalar_
 from flag_gems.ops.zero import zero, zero_out
 from flag_gems.ops.zeros import zero_, zeros
 from flag_gems.ops.zeros_like import zeros_like
@@ -759,12 +786,14 @@ __all__ = [
     "_amp_foreach_non_finite_check_and_unscale_",
     "_assert_async",
     "_batch_norm_no_update",
+    "_functional_assert_async",
     "_cdist_backward",
     "_cdist_forward",
     "_chunk_cat",
     "_conj",
     "_conv_depthwise2d",
     "_convert_weight_to_int4pack",
+    "_dyn_quant_pack_4bit_weight",
     "_embedding_bag_dense_backward",
     "_embedding_bag_per_sample_weights_backward",
     "_euclidean_dist",
@@ -776,6 +805,7 @@ __all__ = [
     "_fused_rms_norm",
     "_fused_rms_norm_backward",
     "_fused_rms_norm_forward",
+    "_has_compatible_shallow_copy_type",
     "_index_put_impl_",
     "_is_all_true",
     "_jagged_to_padded_dense_forward",
@@ -809,6 +839,7 @@ __all__ = [
     "_upsample_nearest_exact2d",
     "_upsample_nearest_exact2d_backward",
     "_upsample_nearest_exact3d",
+    "_weight_int4pack_mm_with_scales_and_zeros",
     "_weight_norm",
     "abs",
     "abs_",
@@ -817,6 +848,7 @@ __all__ = [
     "acosh",
     "acosh_",
     "adaptive_avg_pool2d",
+    "adaptive_max_pool2d_backward",
     "adaptive_max_pool3d_backward",
     "add",
     "add_",
@@ -883,6 +915,7 @@ __all__ = [
     "atan",
     "atan2",
     "atan2_out",
+    "atan2_",
     "atan_",
     "atanh",
     "atanh_",
@@ -891,6 +924,7 @@ __all__ = [
     "avg_pool3d",
     "avg_pool3d_backward",
     "baddbmm",
+    "baddbmm_",
     "baddbmm_out",
     "batch_norm",
     "batch_norm_backward",
@@ -1130,7 +1164,9 @@ __all__ = [
     "i0_",
     "i0_out",
     "igamma_",
+    "igammac",
     "igammac_",
+    "igammac_out",
     "im2col",
     "index",
     "index_add",
@@ -1225,6 +1261,8 @@ __all__ = [
     "xlogy_tensor_scalar_out",
     "xlogy_scalar_tensor",
     "xlogy_scalar_tensor_out",
+    "xlogy_",
+    "xlogy_tensor_scalar_",
     "logical_and",
     "logical_and_",
     "logical_not",
@@ -1282,10 +1320,13 @@ __all__ = [
     "mul",
     "mul_",
     "multinomial",
+    "multiply",
     "multiply_",
     "mv",
+    "mvlgamma",
     "mvlgamma_",
     "nan_to_num",
+    "nan_to_num_",
     "nanmedian",
     "nanmedian_dim",
     "nanmedian_dim_values",
@@ -1297,9 +1338,12 @@ __all__ = [
     "native_layer_norm",
     "ne",
     "ne_scalar",
+    "ne_",
+    "ne_scalar_",
     "neg",
     "neg_",
     "negative",
+    "negative_",
     "new_full",
     "new_ones",
     "nextafter",
@@ -1324,6 +1368,8 @@ __all__ = [
     "normed_cumsum",
     "not_equal",
     "not_equal_scalar",
+    "not_equal_",
+    "not_equal_scalar_",
     "one_hot",
     "ones",
     "ones_like",
@@ -1385,6 +1431,8 @@ __all__ = [
     "replication_pad1d_out",
     "replication_pad2d",
     "replication_pad2d_out",
+    "replication_pad2d_backward",
+    "replication_pad2d_backward_grad_input",
     "replication_pad3d",
     "replication_pad3d_backward",
     "resize",
@@ -1486,11 +1534,13 @@ __all__ = [
     "special_chebyshev_polynomial_w",
     "special_chebyshev_polynomial_w_out",
     "special_digamma",
+    "special_erf",
     # "special_erfc",
     "special_erfcx",
     "special_erfinv",
     "special_erfinv_",
     "special_erfinv_out",
+    "special_exp2",
     "special_gammainc",
     "special_gammaln",
     "special_gammaln_out",
@@ -1499,6 +1549,7 @@ __all__ = [
     "special_i0e_out",
     "special_i1",
     "special_i1_out",
+    "special_i1e",
     "special_legendre_polynomial_p",
     "special_log_softmax",
     "special_log1p",
@@ -1536,6 +1587,7 @@ __all__ = [
     "sum_dim_out",
     "sum_out",
     "svd",
+    "sym_storage_offset",
     "sym_stride",
     "t_copy",
     "t_copy_out",
