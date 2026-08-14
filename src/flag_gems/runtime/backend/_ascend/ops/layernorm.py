@@ -18,14 +18,15 @@ import math
 import torch
 import triton
 
+from flag_gems.ops.layernorm import layer_norm as common_layer_norm
 from flag_gems.ops.layernorm import (
-    layer_norm_loop_kernel,
     layer_norm_persistent_kernel,
     layer_norm_persistent_kernel_multiline,
 )
 from flag_gems.runtime import torch_device_fn
 
 logger = logging.getLogger(__name__)
+native_layer_norm_logger = logging.getLogger("flag_gems.ops.native_layer_norm")
 
 
 def _select_tile_m(M, N, tile_n):
@@ -43,6 +44,11 @@ def layer_norm(input, normalized_shape, weight=None, bias=None, eps=1e-5):
     N = math.prod(normalized_shape)
     M = input.numel() // N
 
+    # This backend specialization only changes the one-pass schedule. Keep the
+    # common streaming implementation for large normalized dimensions.
+    if N > 4096:
+        return common_layer_norm(input, normalized_shape, weight, bias, eps)
+
     input = input.contiguous()
     weight = None if weight is None else weight.contiguous()
     bias = None if bias is None else bias.contiguous()
@@ -53,41 +59,11 @@ def layer_norm(input, normalized_shape, weight=None, bias=None, eps=1e-5):
     rstd = torch.empty(M, dtype=input.dtype, device=input.device)
 
     with torch_device_fn.device(input.device):
-        if N <= 4096:
-            tile_n = triton.next_power_of_2(N)
-            tile_m = _select_tile_m(M, N, tile_n)
-            if tile_m > 1:
-                grid = (triton.cdiv(M, tile_m), 1, 1)
-                layer_norm_persistent_kernel_multiline[grid](
-                    input,
-                    y,
-                    weight,
-                    bias,
-                    mean,
-                    rstd,
-                    M,
-                    N,
-                    eps,
-                    tile_m,
-                    tile_n,
-                )
-            else:
-                grid = (M, 1, 1)
-                layer_norm_persistent_kernel[grid](
-                    input,
-                    y,
-                    weight,
-                    bias,
-                    mean,
-                    rstd,
-                    M,
-                    N,
-                    eps,
-                    tile_n,
-                )
-        else:
-            grid = (M, 1, 1)
-            layer_norm_loop_kernel[grid](
+        tile_n = triton.next_power_of_2(N)
+        tile_m = _select_tile_m(M, N, tile_n)
+        if tile_m > 1:
+            grid = (triton.cdiv(M, tile_m), 1, 1)
+            layer_norm_persistent_kernel_multiline[grid](
                 input,
                 y,
                 weight,
@@ -97,5 +73,29 @@ def layer_norm(input, normalized_shape, weight=None, bias=None, eps=1e-5):
                 M,
                 N,
                 eps,
+                tile_m,
+                tile_n,
+            )
+        else:
+            grid = (M, 1, 1)
+            layer_norm_persistent_kernel[grid](
+                input,
+                y,
+                weight,
+                bias,
+                mean,
+                rstd,
+                M,
+                N,
+                eps,
+                tile_n,
             )
     return y, mean, rstd
+
+
+def native_layer_norm(input, normalized_shape, weight=None, bias=None, eps=1e-5):
+    """Route the registered native operator through the Ascend forward path."""
+    native_layer_norm_logger.debug("GEMS NATIVE_LAYER_NORM")
+    output, mean, rstd = layer_norm(input, normalized_shape, weight, bias, eps)
+    stats_shape = input.shape[: -len(normalized_shape)] + (1,) * len(normalized_shape)
+    return output, mean.view(stats_shape), rstd.view(stats_shape)
