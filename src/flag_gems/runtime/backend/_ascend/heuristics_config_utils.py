@@ -189,10 +189,7 @@ def layer_norm_heur_fused_min_elements(_args):
     return 1024 * 1024
 
 
-def layer_norm_heur_fused_max_resident_n(args):
-    # CANN 8.5 on 910B miscompiles the resident two-dimensional reduction.
-    if "910B" in args["DEVICE_NAME"]:
-        return 0
+def layer_norm_heur_fused_max_resident_n(_args):
     return 512
 
 
