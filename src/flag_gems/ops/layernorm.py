@@ -55,6 +55,13 @@ def _layer_norm_parallel_units(device_index):
     return None
 
 
+@functools.lru_cache(maxsize=None)
+def _layer_norm_device_name(device_index):
+    props = torch_device_fn.get_device_properties(device_index)
+    name = props.get("name") if isinstance(props, dict) else getattr(props, "name", "")
+    return str(name)
+
+
 def _fused_layer_norm_backward_config(input, output_mask, M, N, weight, bias):
     if output_mask is None or M <= 0 or N <= 0:
         return None
@@ -70,11 +77,13 @@ def _fused_layer_norm_backward_config(input, output_mask, M, N, weight, bias):
         return None
 
     tile_n = triton.next_power_of_2(N)
+    device_index = torch_device_fn.current_device()
     args = {
         "M": M,
         "N": N,
         "TILE_N": tile_n,
         "IS_LOW_PRECISION": input.dtype != torch.float32,
+        "DEVICE_NAME": _layer_norm_device_name(device_index),
     }
     # Backends opt in to the resident path by providing this heuristic group.
     fused_heuristics = runtime.get_heuristic_config("layer_norm_backward_fused")
@@ -86,7 +95,7 @@ def _fused_layer_norm_backward_config(input, output_mask, M, N, weight, bias):
     if tile_n > max_resident_n or not enough_work:
         return None
 
-    parallel_units = _layer_norm_parallel_units(torch_device_fn.current_device())
+    parallel_units = _layer_norm_parallel_units(device_index)
     if parallel_units is None:
         return None
 
