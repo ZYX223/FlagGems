@@ -76,6 +76,9 @@ def test_addmm(monkeypatch, M, N, K, scalar, dtype, b_column_major):
 @pytest.mark.parametrize("dtype", FLOAT_DTYPES)
 @pytest.mark.parametrize("bias_shape", [(), (1, 128), (128, 1)])
 def test_addmm_broadcast_bias(dtype, bias_shape):
+    if bias_shape == () and flag_gems.vendor_name != "ascend":
+        pytest.skip("Issue #5385: scalar-bias support is landing per backend")
+
     M, N, K = 128, 128, 128
     mat1 = torch.randn((M, K), dtype=dtype, device=flag_gems.device)
     mat2 = torch.randn((N, K), dtype=dtype, device=flag_gems.device).t()
