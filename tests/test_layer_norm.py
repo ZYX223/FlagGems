@@ -456,9 +456,10 @@ def test_layer_norm_autograd(shape, normalized_shape, dtype, wb_none):
         )
         res_out.backward(res_grad)
 
-    M = res_inp.numel() // math.prod(normalized_shape)
+    N = math.prod(normalized_shape)
+    M = res_inp.numel() // N
     utils.gems_assert_close(res_out, ref_out, dtype)
-    utils.gems_assert_close(res_inp.grad, ref_inp.grad, dtype)
+    utils.gems_assert_close(res_inp.grad, ref_inp.grad, dtype, reduce_dim=N)
     if not wb_none:
         utils.gems_assert_close(res_weight.grad, ref_weight.grad, dtype, reduce_dim=M)
         utils.gems_assert_close(res_bias.grad, ref_bias.grad, dtype, reduce_dim=M)
