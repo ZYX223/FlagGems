@@ -346,7 +346,8 @@ def post_layer_norm_residual(
     normalized_shape = _normalize_shape(normalized_shape)
     _validate_inputs(input, residual, normalized_shape, weight, bias)
 
-    # Inputs without a full affine pair or dense layout use the composed path.
+    # Keep bias outside LayerNorm on the fallback path because some vendor
+    # implementations require weight whenever bias is provided.
     if (
         input.numel() == 0
         or weight is None
@@ -354,7 +355,10 @@ def post_layer_norm_residual(
         or not input.is_contiguous()
         or not residual.is_contiguous()
     ):
-        return torch.layer_norm(input, normalized_shape, weight, bias, eps) + residual
+        output = torch.layer_norm(input, normalized_shape, weight, None, eps)
+        if bias is not None:
+            output = output + bias
+        return output + residual
 
     weight = weight.contiguous()
     bias = bias.contiguous()
