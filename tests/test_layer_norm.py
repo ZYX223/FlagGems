@@ -101,9 +101,6 @@ else:
 
 LAYER_NORM_FORWARD_SHAPES = LAYER_NORM_SHAPES + LAYER_NORM_MEDIUM_SHAPES
 LAYER_NORM_BACKWARD_CASES = [(shape, shape[1:]) for shape in LAYER_NORM_SHAPES]
-# Dedicated backward tests cover the kernel shapes; one case is sufficient to
-# verify that autograd dispatches through the registered backward operator.
-LAYER_NORM_CONTROL_DTYPES = [torch.float32]
 
 
 @pytest.mark.native_layer_norm
@@ -321,7 +318,7 @@ def test_layer_norm_backward_large_m(monkeypatch, shape, normalized_shape, dtype
 
 @pytest.mark.layer_norm_backward
 @pytest.mark.parametrize("output_mask", LAYER_NORM_BACKWARD_OUTPUT_MASKS)
-@pytest.mark.parametrize("dtype", LAYER_NORM_CONTROL_DTYPES)
+@pytest.mark.parametrize("dtype", FLOAT_DTYPES)
 def test_layer_norm_backward_output_mask(monkeypatch, output_mask, dtype):
     _test_layer_norm_backward_case(
         monkeypatch,
@@ -406,7 +403,7 @@ def _test_layer_norm_backward_case(
 @pytest.mark.layer_norm_backward
 @pytest.mark.parametrize("shape,normalized_shape", LAYER_NORM_AUTOGRAD_CASES)
 @pytest.mark.parametrize("wb_none", [False, True])
-@pytest.mark.parametrize("dtype", LAYER_NORM_CONTROL_DTYPES)
+@pytest.mark.parametrize("dtype", FLOAT_DTYPES)
 def test_layer_norm_autograd(shape, normalized_shape, dtype, wb_none):
     res_inp = torch.randn(
         shape, dtype=dtype, device=flag_gems.device, requires_grad=True

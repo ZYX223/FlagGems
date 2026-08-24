@@ -102,27 +102,25 @@ def layer_norm_persistent_kernel_multiline(
     TILE_M: tl.constexpr,
     TILE_N: tl.constexpr,
 ):
-    # Map the program id to the row of X and Y it should compute.
-    pid = ext.program_id(0)
-    m_offsets = pid * TILE_M + tl.arange(0, TILE_M)
-    m_mask = m_offsets < M
+    # Keep the original multiline launch grouping while each program uses the
+    # one-dimensional layout supported by the MetaX lowering pipeline.
+    pid = ext.program_id(0) * TILE_M + ext.program_id(1)
+    m_mask = pid < M
 
-    n_offsets = tl.arange(0, TILE_N)[None, :]
+    n_offsets = tl.arange(0, TILE_N)
     n_mask = n_offsets < N
-    mask = m_mask[:, None] & n_mask
+    mask = m_mask & n_mask
 
-    x = tl.load(in_ptr + m_offsets[:, None] * N + n_offsets, mask, other=0.0).to(
-        tl.float32
-    )
-    m = tl.sum(x, axis=1) / N
-    d = x - m[:, None]  # deviation
+    x = tl.load(in_ptr + pid * N + n_offsets, mask, other=0.0).to(tl.float32)
+    m = tl.sum(x) / N
+    d = x - m  # deviation
     s = tl.where(mask, d * d, 0)
-    sum_square = tl.sum(s, axis=1)  # sum of square of deviation
+    sum_square = tl.sum(s)  # sum of square of deviation
     var = sum_square / N
     rstd = tl.math.rsqrt(var + eps)
 
-    tl.store(out_mean_ptr + m_offsets, m, mask=m_mask)
-    tl.store(out_rstd_ptr + m_offsets, rstd, mask=m_mask)
+    tl.store(out_mean_ptr + pid, m, mask=m_mask)
+    tl.store(out_rstd_ptr + pid, rstd, mask=m_mask)
 
     if weight_ptr is None:
         w = 1
@@ -132,9 +130,9 @@ def layer_norm_persistent_kernel_multiline(
         b = 0
     else:
         b = tl.load(bias_ptr + n_offsets, mask=n_mask)
-    out = (x - m[:, None]) * rstd[:, None] * w + b
+    out = (x - m) * rstd * w + b
 
-    tl.store(out_ptr + m_offsets[:, None] * N + n_offsets, out, mask=mask)
+    tl.store(out_ptr + pid * N + n_offsets, out, mask=mask)
 
 
 @libentry()
@@ -359,8 +357,24 @@ def layer_norm(input, normalized_shape, weight=None, bias=None, eps=1e-5):
     rstd = torch.empty(M, dtype=input.dtype, device=input.device)
 
     with torch_device_fn.device(input.device):
-        # MetaX lowers the resident one-row layout reliably across this range.
-        if N <= 4096:
+        if N <= 128:
+            TILE_N = triton.next_power_of_2(N)
+            TILE_M = triton.cdiv(1024, TILE_N)
+            grid = (triton.cdiv(M, TILE_M), TILE_M, 1)
+            layer_norm_persistent_kernel_multiline[grid](
+                input,
+                y,
+                weight,
+                bias,
+                mean,
+                rstd,
+                M,
+                N,
+                eps,
+                TILE_M,
+                TILE_N,
+            )
+        elif N <= 4096:
             TILE_N = triton.next_power_of_2(N)
             grid = (M, 1, 1)
             layer_norm_persistent_kernel[grid](
