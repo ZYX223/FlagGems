@@ -343,6 +343,15 @@ class PostLayerNormResidual(torch.autograd.Function):
 def post_layer_norm_residual(
     input, residual, normalized_shape, weight=None, bias=None, eps=1e-5
 ):
+    """Compute ``LayerNorm(input) + residual`` in one fused operator.
+
+    This ordering follows the GraphCast processor update in Google DeepMind's
+    reference implementation and its PyTorch counterpart in NVIDIA PhysicsNeMo:
+    https://github.com/google-deepmind/weathernext/blob/7077d40a36db6541e3ed72ccaed1c0d202fa6014/graphcast/deep_typed_graph_net.py#L212-L248
+    https://github.com/google-deepmind/weathernext/blob/7077d40a36db6541e3ed72ccaed1c0d202fa6014/graphcast/deep_typed_graph_net.py#L373-L394
+    https://github.com/NVIDIA/physicsnemo/blob/65ec388929884436051203bca9dfb912eabd4c18/physicsnemo/nn/module/gnn_layers/mesh_graph_mlp.py#L120-L171
+    https://github.com/NVIDIA/physicsnemo/blob/65ec388929884436051203bca9dfb912eabd4c18/physicsnemo/nn/module/gnn_layers/mesh_node_block.py#L70-L91
+    """
     normalized_shape = _normalize_shape(normalized_shape)
     _validate_inputs(input, residual, normalized_shape, weight, bias)
 

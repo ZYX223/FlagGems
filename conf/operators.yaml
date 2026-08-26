@@ -8859,7 +8859,7 @@ ops:
   - id: post_layer_norm_residual
     description: Fuses LayerNorm followed by a residual addition.
     for:
-      - post_layer_norm_residual
+      - None
     labels:
       - fused
     kind:
