@@ -61,7 +61,7 @@ _addmm_layout_bias_only = pytest.mark.skipif(
 
 _addmm_beta_zero_only = pytest.mark.skipif(
     flag_gems.vendor_name not in _ADDMM_BETA_ZERO_VENDORS,
-    reason="This backend does not yet preserve the AddMM beta-zero contract",
+    reason="Issue #5755: this backend does not yet preserve the AddMM beta-zero contract",
 )
 
 

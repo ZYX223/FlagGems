@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import logging
-import math
 
 import torch
 import triton
@@ -21,6 +20,7 @@ import triton.language as tl
 
 from flag_gems import runtime
 from flag_gems.runtime import torch_device_fn
+from flag_gems.runtime.backend._metax import heuristics_config_utils as _hcu
 from flag_gems.utils import broadcastable_to, libentry, libtuner
 from flag_gems.utils import triton_lang_extension as ext
 
@@ -35,32 +35,7 @@ logger = logging.getLogger(__name__)
     warmup=5,
     rep=10,
 )
-@triton.heuristics(
-    {
-        "UPGRADE": lambda args: math.ceil(
-            (args["M"] * args["N"]) / (args["BLOCK_SIZE_M"] * args["BLOCK_SIZE_N"])
-        ).bit_length()
-        > 31,
-    }
-)
-@triton.heuristics(
-    {
-        "UPGRADE_A_OFFS": lambda args: math.ceil(args["M"] * args["K"]).bit_length()
-        > 31,
-    }
-)
-@triton.heuristics(
-    {
-        "UPGRADE_B_OFFS": lambda args: math.ceil(args["K"] * args["N"]).bit_length()
-        > 31,
-    }
-)
-@triton.heuristics(
-    {
-        "UPGRADE_C_OFFS": lambda args: math.ceil(args["M"] * args["N"]).bit_length()
-        > 31,
-    }
-)
+@triton.heuristics(_hcu.HEURISTICS_CONFIGS["addmm"])
 @triton.jit(do_not_specialize=["alpha", "beta"])
 def addmm_kernel(
     a_ptr,
