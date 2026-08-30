@@ -19,6 +19,7 @@ from typing import Any, Callable, List, Mapping, Tuple
 
 import torch
 
+from flag_gems.runtime import torch_device_fn
 from flag_gems.utils.code_cache import code_cache_dir
 from flag_gems.utils.code_utils import IndentedBuffer
 
@@ -52,18 +53,22 @@ def generate_index_add_kernel(
             code.writeline("index,")
             code.writeline("src,")
             code.writeline("out,")
-            code.writeline("N,")
-            code.writeline("inp_numel,")
-            code.writeline("inp_stride_dim,")
-            code.writeline("inp_shape_dim,")
-            code.writeline("src_shape_dim,")
-            code.writeline("delta,")
+            code.writeline("N: tl.int64,")
+            code.writeline("inp_numel: tl.int64,")
+            code.writeline("inp_stride_dim: tl.int64,")
+            code.writeline("inp_shape_dim: tl.int64,")
+            code.writeline("src_shape_dim: tl.int64,")
+            code.writeline("delta: tl.int64,")
             code.writeline("alpha,")
 
-            stride_args = ", ".join(f"src_stride_{i}: int" for i in range(rank))
+            stride_args = ", ".join(
+                f"src_stride_{i}: tl.int64" for i in range(rank)
+            )
             code.writeline(f"{stride_args}, # stride for src")
 
-            shape_args = ", ".join(f"src_shape_{i}: int" for i in range(rank))
+            shape_args = ", ".join(
+                f"src_shape_{i}: tl.int64" for i in range(rank)
+            )
             code.writeline(f"{shape_args}, # shape for src")
 
             code.writeline("BLOCK_SIZE: tl.constexpr,")
@@ -74,6 +79,7 @@ def generate_index_add_kernel(
         with code.indent():
             code.writeline("pid = tl.program_id(axis=0)")
             code.writeline("offsets = pid * BLOCK_SIZE + tl.arange(0, BLOCK_SIZE)")
+            code.writeline("logical_offsets = offsets")
             code.writeline("mask = offsets < N")
 
             for i in range(rank - 1, -1, -1):
@@ -86,9 +92,9 @@ def generate_index_add_kernel(
             code.writeline("pre_cal = (inp_stride_dim * src_shape_dim)")
 
             # index add
-            code.writeline("pre_idx = (src_offset // pre_cal).to(tl.int64)")
+            code.writeline("pre_idx = (logical_offsets // pre_cal).to(tl.int64)")
             code.writeline(
-                "dim_idx = (src_offset % pre_cal // inp_stride_dim).to(tl.int64)"
+                "dim_idx = (logical_offsets % pre_cal // inp_stride_dim).to(tl.int64)"
             )
             code.writeline(
                 "src_dim_idx = (tl.load(index + dim_idx, mask=mask, other=0)).to(tl.int64)"
@@ -97,7 +103,7 @@ def generate_index_add_kernel(
                 'assert src_dim_idx >= 0 and src_dim_idx < inp_shape_dim, "0 <= index < self.size(dim)"'
             )
             code.writeline(
-                "input_idx = (src_offset + (delta * pre_idx + src_dim_idx - dim_idx) * inp_stride_dim).to(tl.int64)"
+                "input_idx = (logical_offsets + (delta * pre_idx + src_dim_idx - dim_idx) * inp_stride_dim).to(tl.int64)"
             )
 
             code.writeline("input_mask = input_idx < inp_numel")
@@ -264,19 +270,20 @@ def index_add(inp, dim, index, src, alpha=1):
     delta = inp.size(dim) - src_shape_dim
     N = src.numel()
 
-    _index_add_func(
-        out,
-        index,
-        src,
-        dim,
-        inp_stride_dim,
-        inp_shape_dim,
-        src_shape_dim,
-        delta,
-        N,
-        inp.numel(),
-        alpha,
-    )
+    with torch_device_fn.device(out.device):
+        _index_add_func(
+            out,
+            index,
+            src,
+            dim,
+            inp_stride_dim,
+            inp_shape_dim,
+            src_shape_dim,
+            delta,
+            N,
+            inp.numel(),
+            alpha,
+        )
     if needs_cast:
         return out.to(orig_dtype)
     return out
@@ -315,19 +322,20 @@ def index_add_(inp, dim, index, src, alpha=1):
     delta = inp.size(dim) - src_shape_dim
     N = src.numel()
 
-    _index_add_func(
-        out,
-        index,
-        src,
-        dim,
-        inp_stride_dim,
-        inp_shape_dim,
-        src_shape_dim,
-        delta,
-        N,
-        inp.numel(),
-        alpha,
-    )
+    with torch_device_fn.device(out.device):
+        _index_add_func(
+            out,
+            index,
+            src,
+            dim,
+            inp_stride_dim,
+            inp_shape_dim,
+            src_shape_dim,
+            delta,
+            N,
+            inp.numel(),
+            alpha,
+        )
     if needs_cast:
         inp.copy_(out.to(orig_dtype))
     return inp
