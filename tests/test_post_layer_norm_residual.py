@@ -55,6 +55,10 @@ def _make_affine(normalized_shape, dtype, mode):
 
 
 def _reference(input, residual, normalized_shape, weight, bias, eps):
+    # Some native backends ignore bias when weight is absent. An identity
+    # weight preserves the bias-only reference without changing the tested API.
+    if weight is None and bias is not None:
+        weight = torch.ones_like(bias)
     return torch.layer_norm(
         utils.to_reference(input, True),
         normalized_shape,
@@ -122,9 +126,8 @@ def _assert_backward_close(
         ref_grad_output,
     ) = _make_grad_tensors(shape, normalized_shape, dtype, affine_mode)
 
-    expected = (
-        torch.layer_norm(ref_input, normalized_shape, ref_weight, ref_bias, 1e-5)
-        + ref_residual
+    expected = _reference(
+        ref_input, ref_residual, normalized_shape, ref_weight, ref_bias, 1e-5
     )
     actual = flag_gems.post_layer_norm_residual(
         input, residual, normalized_shape, weight, bias, 1e-5
